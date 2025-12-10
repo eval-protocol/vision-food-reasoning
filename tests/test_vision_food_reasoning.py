@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Any
 
 import litellm
+# Fix for qwen3-vl models: disable LiteLLM's transform_inline suffix
+# which breaks vision models that have 'vl' but not 'vision' in the name
+litellm.disable_add_transform_inline_image_block = True
 
 from eval_protocol.models import (
     EvaluateResult,
@@ -100,11 +103,7 @@ def _llm_equivalence_check(
     *,
     judge_model: str | None = None,
 ) -> tuple[bool, str]:
-    model_name = (
-        judge_model
-        or os.getenv("VISION_FOOD_REASONING_JUDGE_MODEL")
-        or "fireworks_ai/accounts/fireworks/models/gpt-oss-120b"
-    )
+    model_name = "gpt-5-nano-2025-08-07"
     prediction_text = prediction_text.strip()
     if not prediction_text:
         return False, "LLM judge skipped: prediction text is empty."
@@ -126,7 +125,6 @@ def _llm_equivalence_check(
     try:
         completion = litellm.completion(
             model=model_name,
-            temperature=0,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -181,16 +179,7 @@ def _ground_truth_label(row: EvaluationRow) -> str:
     completion_params=[
         {
             "model": "fireworks_ai/accounts/fireworks/models/qwen3-vl-235b-a22b-instruct",
-            # "max_tokens": 512,
-            # "model": "openrouter/qwen/qwen3-vl-30b-a3b-instruct",
-            # "model": "gpt-4.1-mini",
             "max_tokens": 512,
-            # "extra_body": {
-            #     'provider': {
-            #         'order': ['novita'],
-            #         'allow_fallbacks': False,
-            #     },
-            # },
         }
     ],
     rollout_processor=SingleTurnRolloutProcessor(),
